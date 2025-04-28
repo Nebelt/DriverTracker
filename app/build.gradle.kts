@@ -16,6 +16,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables.useSupportLibrary = true
     }
 
     buildTypes {
@@ -66,4 +67,7 @@ dependencies {
     implementation("com.google.firebase:firebase-database-ktx")
 
     implementation("com.google.android.gms:play-services-location:21.0.1")
+
+    implementation("com.google.android.material:material:1.10.0")
+
 }

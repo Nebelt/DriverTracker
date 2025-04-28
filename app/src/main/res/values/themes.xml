@@ -10,6 +10,6 @@
         <!-- Цвета текста для светлой/темной темы -->
         <item name="android:textColorPrimary">?attr/colorOnBackground</item>
         <item name="android:textColorSecondary">@color/gray</item>
-        <item name="android:windowBackground">?attr/colorBackground</item>
+        <item name="android:windowBackground">@color/background</item>
     </style>
 </resources>

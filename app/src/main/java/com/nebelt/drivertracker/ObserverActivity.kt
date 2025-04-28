@@ -19,6 +19,10 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.nebelt.drivertracker.databinding.ActivityObserverBinding
+import android.os.Build
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import androidx.annotation.RequiresApi
 
 class ObserverActivity : AppCompatActivity() {
 
@@ -116,6 +120,7 @@ class ObserverActivity : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun showPermissionRationale() {
         AlertDialog.Builder(this)
             .setTitle("Требуются уведомления")
@@ -127,6 +132,7 @@ class ObserverActivity : AppCompatActivity() {
             .show()
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun requestNotificationPermission() {
         ActivityCompat.requestPermissions(
             this,
@@ -150,12 +156,24 @@ class ObserverActivity : AppCompatActivity() {
     }
 
     private fun sendNotification() {
+        // Для Android 8.0+ используем канал
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "location_channel",
+                "Location Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Driver status alerts"
+            }
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        }
+
         NotificationCompat.Builder(this, "location_channel")
             .setContentTitle("Водитель остановился")
             .setContentText("Проверьте состояние водителя")
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_notification) // Используем иконку напрямую
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build().let { notification ->
+            .build().also { notification ->
                 NotificationManagerCompat.from(this).notify(1, notification)
             }
     }

@@ -5,8 +5,8 @@
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
     <color name="gray">#FF888888</color>
-
+    <color name="background">#FFFFFFFF</color>
     <color name="text_primary">@android:color/black</color>
     <color name="text_primary_dark">@android:color/white</color>
-    <color name="ic_notification">@drawable/ic_notification</color>
+    <color name="notification_icon_tint">#FF0000</color>
 </resources>
