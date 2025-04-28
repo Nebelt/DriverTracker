@@ -1,13 +1,19 @@
 package com.nebelt.drivertracker
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
+import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
@@ -24,11 +30,44 @@ class ObserverActivity : AppCompatActivity() {
     private var lastTimestamp: Long = 0
     private val stationaryThreshold = 10000 // 1секунда = 1000
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityObserverBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        showTestNotification()
+        testNotification()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                // Показываем объяснение, если нужно
+                if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Нужны уведомления")
+                        .setMessage("Приложение показывает предупреждения, когда водитель останавливается. Разрешите уведомления.")
+                        .setPositiveButton("Разрешить") { _, _ ->
+                            ActivityCompat.requestPermissions(
+                                this,
+                                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                REQUEST_CODE_NOTIFICATION
+                            )
+                        }
+                        .setNegativeButton("Отмена", null)
+                        .show()
+                } else {
+                    // Запрашиваем напрямую
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                        REQUEST_CODE_NOTIFICATION
+                    )
+                }
+            }
+        }
+
         // Удалите все обращения к синтетическому binding (например, binding.textView)
 
         database.child("drivers").child(driverId)
@@ -85,11 +124,15 @@ class ObserverActivity : AppCompatActivity() {
                 roundedLastLng == roundedNewLng
     }
 
-    private fun showTestNotification() {
+
+
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    private fun testNotification() {
         val notification = NotificationCompat.Builder(this, "location_channel")
-            .setContentTitle("Тест")
-            .setContentText("Уведомление работает!")
-            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Тест уведомления")
+            .setContentText("Проверка работы системы")
+            .setSmallIcon(R.drawable.ic_launcher_foreground) // Используйте свою иконку
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
         NotificationManagerCompat.from(this).notify(1, notification)

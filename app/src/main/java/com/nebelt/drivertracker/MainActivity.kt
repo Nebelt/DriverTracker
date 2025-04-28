@@ -11,13 +11,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)  // Устанавливаем корневое View
+        setContentView(binding.root)
 
+        // Показываем текст при выборе роли
         binding.btnDriver.setOnClickListener {
+            binding.tvStatus.text = "Режим водителя: отправка координат..."
             startActivity(Intent(this, DriverActivity::class.java))
         }
 
         binding.btnObserver.setOnClickListener {
+            binding.tvStatus.text = "Режим наблюдателя: отслеживание..."
             startActivity(Intent(this, ObserverActivity::class.java))
         }
     }
