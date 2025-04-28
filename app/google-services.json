@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "700446683424",
+    "firebase_url": "https://drivertracker-138d5-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "drivertracker-138d5",
+    "storage_bucket": "drivertracker-138d5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:700446683424:android:17130b698fa1e679546745",
+        "android_client_info": {
+          "package_name": "com.nebelt.drivertracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8P1hGgk5ioOjFcfQGPj6ndGU94jLLXw0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
