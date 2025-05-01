@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -65,9 +66,11 @@ dependencies {
     // Firebase BOM (Bill of Materials)
     implementation(platform("com.google.firebase:firebase-bom:32.3.1"))
     implementation("com.google.firebase:firebase-database-ktx")
+    implementation("com.google.firebase:firebase-messaging:23.0.0")
 
     implementation("com.google.android.gms:play-services-location:21.0.1")
 
     implementation("com.google.android.material:material:1.10.0")
+    implementation("com.yandex.android:maps.mobile:4.3.1")
 
 }
