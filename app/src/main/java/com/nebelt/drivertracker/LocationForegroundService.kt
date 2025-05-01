@@ -1,152 +1,203 @@
-// LocationForegroundService.kt
 package com.nebelt.drivertracker
 
 import android.Manifest
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
-import android.os.Build
-import android.os.IBinder
+import android.os.*
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
-import java.math.BigDecimal
-import java.math.RoundingMode
+import java.util.concurrent.Executors
 
 class LocationForegroundService : Service() {
 
     private lateinit var locationManager: LocationManager
     private val database = Firebase.database
     private val driverRef = database.getReference("drivers/driver_location")
+    private val executor = Executors.newSingleThreadExecutor()
 
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
-            val roundedLat = location.latitude.roundToHundredths()
-            val roundedLng = location.longitude.roundToHundredths()
-            Log.d("LocationService", "New location: $roundedLat, $roundedLng")
-            saveLocation(roundedLat, roundedLng)
+            executor.execute {
+                try {
+                    val lat = location.latitude.roundCoordinates()
+                    val lng = location.longitude.roundCoordinates()
+                    Log.d(TAG, "📍 Новые координаты: $lat,$lng")
+                    saveToFirebase(lat, lng)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Ошибка обработки локации", e)
+                }
+            }
         }
 
         override fun onProviderDisabled(provider: String) {
-            Log.w("LocationService", "Provider disabled: $provider")
+            Log.w(TAG, "⚡ Провайдер отключен: $provider")
         }
 
         override fun onProviderEnabled(provider: String) {
-            Log.i("LocationService", "Provider enabled: $provider")
+            Log.i(TAG, "✅ Провайдер доступен: $provider")
         }
     }
 
     override fun onCreate() {
         super.onCreate()
+        Log.i(TAG, "🟢 Сервис создан")
         initNotificationChannel()
-        startLocationUpdates()
+        startLocationTracking()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = createNotification()
-        startForeground(1, notification)
+        startForeground(NOTIFICATION_ID, createNotification())
+        Log.i(TAG, "▶ Сервис запущен")
         return START_STICKY
-    }
-
-    private fun createNotification(): Notification {
-        return NotificationCompat.Builder(this, "location_channel")
-            .setContentTitle("Отслеживание местоположения")
-            .setContentText("Идет передача координат водителя")
-            .setSmallIcon(R.drawable.ic_notification)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
     }
 
     private fun initNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                "location_channel",
-                "Location Tracking",
+                CHANNEL_ID,
+                "Отслеживание местоположения",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Tracking driver location"
+                description = "Канал для фонового трекинга"
             }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
         }
     }
 
-    private fun startLocationUpdates() {
-        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    private fun createNotification(): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("🚗 Трекинг водителя")
+            .setContentText("Идет передача координат")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .build()
+    }
+
+    private fun startLocationTracking() {
+        Log.d(TAG, "🛰 Запуск отслеживания")
+        locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
+
+        if (!hasLocationPermission()) {
+            Log.e(TAG, "⛔ Нет разрешения на локацию")
+            stopSelf()
+            return
+        }
 
         try {
-            if (checkPermission()) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.e(TAG, "🔐 Разрешения отозваны")
+                stopSelf()
+                return
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
-                    3000,
-                    5f,
+                    MIN_TIME_MS,
+                    MIN_DISTANCE_M,
+                    executor,
                     locationListener
                 )
-                locationManager.requestLocationUpdates(
-                    LocationManager.NETWORK_PROVIDER,
-                    5000,
-                    10f,
-                    locationListener
-                )
-
-                // Получаем последнее известное местоположение
-                val lastLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                lastLocation?.let {
-                    saveLocation(
-                        it.latitude.roundToHundredths(),
-                        it.longitude.roundToHundredths()
+            } else {
+                try {
+                    @Suppress("DEPRECATION")
+                    locationManager.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER,
+                        MIN_TIME_MS,
+                        MIN_DISTANCE_M,
+                        locationListener,
+                        Looper.getMainLooper()
                     )
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "🛑 Ошибка безопасности", e)
+                    stopSelf()
+                    return
                 }
             }
+
+            try {
+                val lastLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                lastLocation?.let {
+                    saveToFirebase(it.latitude.roundCoordinates(), it.longitude.roundCoordinates())
+                }
+            } catch (e: SecurityException) {
+                Log.e(TAG, "🛑 Нет доступа к последней локации", e)
+            }
+
         } catch (e: Exception) {
-            Log.e("LocationService", "Location update error", e)
+            Log.e(TAG, "💥 Ошибка трекинга", e)
+            stopSelf()
         }
     }
 
-    private fun checkPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun saveLocation(lat: Double, lng: Double) {
-        driverRef.setValue(
-            mapOf(
+    private fun saveToFirebase(lat: Double, lng: Double) {
+        try {
+            driverRef.setValue(mapOf(
                 "lat" to lat,
                 "lng" to lng,
                 "timestamp" to ServerValue.TIMESTAMP
-            )
-        ).addOnFailureListener { e ->
-            Log.e("LocationService", "Save failed", e)
+            )).addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(TAG, "🔥 Данные сохранены")
+                } else {
+                    Log.e(TAG, "❌ Ошибка Firebase", task.exception)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "‼ Ошибка сохранения", e)
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    private fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
 
     override fun onDestroy() {
         super.onDestroy()
         try {
             locationManager.removeUpdates(locationListener)
+            executor.shutdown()
+            Log.w(TAG, "🔴 Сервис остановлен")
         } catch (e: Exception) {
-            Log.e("LocationService", "Error removing updates", e)
+            Log.e(TAG, "⚠ Ошибка остановки", e)
         }
     }
 
-    private fun Double.roundToHundredths(): Double {
-        return BigDecimal(this).setScale(2, RoundingMode.HALF_UP).toDouble()
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    companion object {
+        private const val TAG = "LocationTracker"
+        private const val NOTIFICATION_ID = 101
+        private const val CHANNEL_ID = "location_channel"
+        private const val MIN_TIME_MS = 3000L
+        private const val MIN_DISTANCE_M = 5f
+
+        fun start(context: Context) {
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, LocationForegroundService::class.java)
+            )
+        }
     }
 }

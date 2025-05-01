@@ -10,14 +10,25 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.nebelt.drivertracker.databinding.ActivityDriverBinding
 
 class DriverActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityDriverBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_driver)
+        binding = ActivityDriverBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        checkAndRequestPermissions()
+        binding.btnStopTracking.setOnClickListener {
+            stopLocationService()
+            finish()
+        }
+    }
+
+    private fun stopLocationService() {
+        val serviceIntent = Intent(this, LocationForegroundService::class.java)
+        stopService(serviceIntent)
     }
 
     private fun checkAndRequestPermissions() {

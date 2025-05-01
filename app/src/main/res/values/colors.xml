@@ -9,4 +9,6 @@
     <color name="text_primary">@android:color/black</color>
     <color name="text_primary_dark">@android:color/white</color>
     <color name="notification_icon_tint">#FF0000</color>
+    <color name="red_error">#FF0000</color>
+    <color name="map_blue">#4285F4</color>
 </resources>
